@@ -1,0 +1,42 @@
+#!/usr/bin/env groovy
+pipeline {
+    agent any
+    parameters {
+        string(defaultValue: 'uat', name: 'ENVIRONMENT')
+        string(defaultValue: '@regression', name: 'TAG')
+    }
+    stages {
+        stage('Checkout Code') {
+            steps {
+                deleteDir()
+                println('**** Checkout code from git repository ****')
+                checkout scm
+                println('**** Checkout code from git repository completed ****')
+            }
+        }
+        stage('Run BFA Tests') {
+            steps {
+                println('**** Trigger Web Tests ****')
+                sh "mvn clean verify -Denvironment=${ENVIRONMENT} -Dcucumber.options=\"--tags ${TAG}\""
+                sh "mvn serenity:aggregate"
+            }
+        }
+        stage('Generate Serenity Report') {
+            steps {
+                println('**** Generating report ****')
+                publishHTML(
+                        [
+                                alwaysLinkToLastBuild: true,
+                                allowMissing: true,
+                                keepAll: true,
+                                reportDir: 'target/site/serenity',
+                                reportFiles: 'index.html',
+                                reportName: 'Resultado Tarjetas QA',
+                                reportTitles: 'Resultado Tarjetas QA'
+                        ]
+                )
+            }
+        }
+
+    }
+}

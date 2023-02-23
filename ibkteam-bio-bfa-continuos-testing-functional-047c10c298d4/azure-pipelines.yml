@@ -1,0 +1,94 @@
+#Configuracion pipeline: bfa-continuous-testing-front
+
+parameters:
+  - name: tags
+    type: string
+    displayName: Cucumber-tags a ejecutar
+    default: '@portableAuthentication'
+    values:
+      - '@IdentityEnrollment'
+      - '@portableAuthentication'
+      - '@WebEnrollmentNewClient'
+      - '@EnrollmentNewClient'
+      - '@EnrollmentErrorNegativeAuthenticationResult'
+      - '@IdentityExpressEnrollment'
+      - '@ExpressEnrollmentNewClient'
+      - '@ExpressEnrollmentNewClientErrorMask'
+      - '@ExpressEnrollmentClienteErrorFraude'
+      - '@ExpressEnrollmentClienteErrorMuchosRostros'
+      - '@ExpressEnrollmentClienteErrorBajaCalidad'
+      - '@ExpressEnrollmentClienteErrorImagenRecortada'
+      - '@ExpressEnrollmentClienteErrorSimilitud'
+      - '@ExpressEnrollmentClientNotFoundInReniec'
+      - '@ExpressEnrollmentClienteErrorRostroMuyCercaBorde'
+      - '@ExpressEnrollmentClienteErrorRostroCercaBorde'
+      - '@IdentityAuthentication'
+      - '@AuthenticationClientEnrolled'
+      - '@IdentityAuthenticationClienteErrorFraude'
+      - '@IdentityAuthenticationClienteErrorImagenRecortada'
+      - '@IdentityAuthenticationClienteErrorMuchosRostros'
+      - '@IdentityAuthenticationClienteErrorMask'
+      - '@IdentityAuthenticationClienteErrorBajaCalidad'
+      - '@IdentityAuthenticationClienteErrorNoDetectaRostro'
+      - '@IdentityAuthenticationClienteErrorRostroMuyCercano'
+      - '@IdentityAuthenticationClienteErrorRostroMuyCercaBorde'
+      - '@IdentityNewAuthentication'
+      - '@NewAuthenticationClientEnrolled'
+      - '@IdentityNewAuthenticationClienteErrorFraude'
+      - '@IdentityNewAuthenticationClienteErrorImagenRecortada'
+      - '@IdentityNewAuthenticationClienteErrorMuchosRostros'
+      - '@IdentityNewAuthenticationClienteErrorMask'
+      - '@IdentityNewAuthenticationClienteErrorBajaCalidad'
+      - '@IdentityNewAuthenticationClienteErrorNoDetectaRostro'
+      - '@IdentityNewAuthenticationClienteErrorRostroMuyCercano'
+      - '@IdentityNewAuthenticationClienteErrorRostroMuyCercaBorde'
+  - name: environment
+    type: string
+    displayName: Ambiente
+    default: dev
+
+    values:
+      - dev
+      - uat
+
+variables:
+  - name: vmImage
+    value: 'ubuntu-latest'
+    readonly: true
+#  - group: continuous testing functional_${{ parameters.environment }}
+trigger: none
+pr: none
+
+stages:
+  - stage: Execute_automated_testing
+    displayName: Ejecutar automatización de pruebas
+    jobs:
+      - job: Build_Execution
+        pool:
+          vmImage: $(vmImage)
+        steps:
+          - task: JavaToolInstaller@0
+            inputs:
+              versionSpec: '11'
+              jdkArchitectureOption: x64
+              jdkSourceOption: PreInstalled
+          - checkout: self
+          #          - script: |
+          #              cd portable-front
+          #              cp application-${{ parameters.environment }}.properties "C:\Users\VssAdministrator"
+          - script: |
+              mvn clean verify "-Dcucumber.filter.tags=${{ parameters.tags }}" "-Denvironment=${{ parameters.environment }}"
+            displayName: 'Ejecucion de tests'
+          - script: |
+              mvn serenity:aggregate
+            condition: always()
+            displayName: 'Generar reporte-serenity'
+          - task: PublishPipelineArtifact@1
+            condition: always()
+            inputs:
+              targetPath: $(System.DefaultWorkingDirectory)/target/site/serenity/
+              artifactName: 'ReporteSerenity'
+              artifactType: 'pipeline'
+            displayName: 'Publicar reporte'
+
+
